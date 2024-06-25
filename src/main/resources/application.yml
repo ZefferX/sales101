@@ -1,0 +1,17 @@
+server:
+  port: 8090
+
+spring:
+
+  datasource:
+      url: jdbc:postgresql://localhost:5332/tienda
+
+      username: zefferx
+      password: example
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  main:
+    web-application-type: servlet
+
