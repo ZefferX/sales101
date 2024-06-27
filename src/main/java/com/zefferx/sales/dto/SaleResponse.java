@@ -1,4 +1,4 @@
 package com.zefferx.sales.dto;
 
-public record SaleResponse(String message, SaleTicket saleTicket) {
+public record SaleResponse(String message, SaleTicketResponse saleTicketResponse) {
 }

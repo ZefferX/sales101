@@ -7,8 +7,16 @@ import lombok.NoArgsConstructor;
 
 @Entity @NoArgsConstructor @AllArgsConstructor @Data public class Billing {
 
-    public static Integer staticId = 1;
-    @Id private Integer id;
+    @Id
+    @SequenceGenerator(
+            name = "billing_id_sequence",
+            sequenceName = "billing_id_sequence",
+            allocationSize = 1)
+    @GeneratedValue(
+            strategy = GenerationType.SEQUENCE,
+            generator = "billing_id_sequence")
+
+    private Integer id;
     private Integer total;
 
 }

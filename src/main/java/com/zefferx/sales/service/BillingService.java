@@ -1,18 +1,13 @@
 package com.zefferx.sales.service;
 
-import com.zefferx.sales.dto.NewBillingRequest;
-import com.zefferx.sales.dto.NewPurchaseRequest;
-import com.zefferx.sales.dto.SaleResponse;
-import com.zefferx.sales.dto.SaleTicket;
+import com.zefferx.sales.dto.*;
 import com.zefferx.sales.model.Billing;
 import com.zefferx.sales.model.Client;
 import com.zefferx.sales.model.Product;
+import com.zefferx.sales.model.SaleTicket;
 import com.zefferx.sales.repository.BillingRepository;
 import lombok.AllArgsConstructor;
-import org.springframework.boot.autoconfigure.integration.IntegrationProperties;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -21,15 +16,8 @@ public class BillingService {
     private final BillingRepository billingRepository;
     private final ClientService clientService;
     private final ProductService productService;
+    private final SaleTicketService saleTicketService;
 
-
-    //crear dto para el request body
-    //llamar al service
-    //desde el service llamar al productService y clientService
-    //buscarlos por id
-    //empezar las condiciones que se hicieron en el proyecto java secuencial
-    //guardar toodo
-    //retorna un DTO de response con datos del ticket
 
     public SaleResponse completedSale(NewPurchaseRequest request) {
 
@@ -54,22 +42,79 @@ public class BillingService {
             return new SaleResponse("Fondo insuficiente para continuar su compra", null) ;
 
         client.setMoney(client.getMoney() - totalCompra);
-        Billing cashRegister = billingRepository.getReferenceById(Billing.staticId);
-        cashRegister.setTotal(cashRegister.getTotal() + totalCompra);
+        Billing cashRegister = billingRepository.findFirstByOrderByIdDesc();
+        Integer currentMoney = cashRegister.getTotal();
+        Billing newCashRegister = new Billing();
+
+        newCashRegister.setTotal(currentMoney + totalCompra);
         product.setQuantity(product.getQuantity() - cantidadAComprar);
-        //No entiendo esta linea
         clientService.updateClientToInternalUse(client);
         productService.updateProductToInternalUse(product);
-        billingRepository.save(cashRegister);
+        billingRepository.save(newCashRegister);
 
-        SaleTicket saleTicket = new SaleTicket(product.getId(), product.getName(), product.getPrice(), client.getId(), cantidadAComprar, totalCompra);
-        return new SaleResponse("Finalizado", saleTicket);
+
+        SaleTicket newSaleTicketResponse = saleTicketService.createSaleTicket(product.getId(),
+                product.getName(),
+                product.getPrice(),
+                client.getId(),
+                cantidadAComprar,
+                totalCompra);
+
+        SaleTicketResponse saleTicketResponse = new SaleTicketResponse
+                (product.getId(),
+                product.getName(),
+                product.getPrice(),
+                client.getId(),
+                cantidadAComprar,
+                totalCompra);
+        return new SaleResponse("Finalizado", saleTicketResponse);
 
     }
 
+    public DevolutionResponse returnProcess(ReturnPurchaseRequest request){
+        Product product = productService.getProductById(request.productId());
+        Client client = clientService.getClientById(request.clientId());
 
+        Integer quantityToReturn = request.quantity();
+        Integer totalToRefund = quantityToReturn * product.getPrice();
+
+        product.setQuantity(product.getQuantity() + quantityToReturn);
+        client.setMoney(client.getMoney() + totalToRefund);
+
+        Billing cashRegister = billingRepository.findFirstByOrderByIdDesc();
+        Integer currentMoney = cashRegister.getTotal();;
+        Billing newCashRegister = new Billing();
+
+        newCashRegister.setTotal(currentMoney -totalToRefund);
+
+        clientService.updateClientToInternalUse(client);
+        productService.updateProductToInternalUse(product);
+        billingRepository.save(newCashRegister);
+
+        SaleTicket newReturnTicket = SaleTicket.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .productPrice(product.getPrice())
+                .clientId(client.getId())
+                .returnedQuantity(quantityToReturn)
+                .returnedMoney(totalToRefund)
+                .build();
+
+        DevolutionTicketResponse devolutionTicketResponse = new DevolutionTicketResponse(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                client.getId(),
+                quantityToReturn,
+                totalToRefund);
+        return new DevolutionResponse("Devolucion concretada", devolutionTicketResponse);
+
+
+
+    }
 
 }
+
 
 
 
