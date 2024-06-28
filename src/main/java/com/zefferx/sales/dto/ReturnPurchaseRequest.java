@@ -1,8 +1,7 @@
 package com.zefferx.sales.dto;
 
 public record ReturnPurchaseRequest(
-        Integer clientId,
-        Integer productId,
+        Integer ticketId,
         Integer quantity,
         Boolean isFlexibleClient
 ) {

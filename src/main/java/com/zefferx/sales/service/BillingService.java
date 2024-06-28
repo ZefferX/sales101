@@ -28,7 +28,7 @@ public class BillingService {
         }
         boolean esCantidadSolicitadaMayorALaDisponible = request.quantity() > product.getQuantity();
         if (esCantidadSolicitadaMayorALaDisponible && !request.isFlexibleClient())
-            return new SaleResponse("No es posible comprar porque el cliente no es flexible en la cantidad", null) ;
+            return new SaleResponse("No es posible comprar porque el cliente no es flexible en la cantidad", null);
 
         Integer totalCompra = 0;
         Integer cantidadAComprar = request.quantity();
@@ -39,7 +39,7 @@ public class BillingService {
         totalCompra = cantidadAComprar * product.getPrice();
         boolean tieneSuficienteDinero = client.getMoney() > totalCompra;
         if (!tieneSuficienteDinero)
-            return new SaleResponse("Fondo insuficiente para continuar su compra", null) ;
+            return new SaleResponse("Fondo insuficiente para continuar su compra", null);
 
 
         client.setMoney(client.getMoney() - totalCompra);
@@ -63,20 +63,67 @@ public class BillingService {
 
         SaleTicketResponse saleTicketResponse = new SaleTicketResponse
                 (product.getId(),
-                product.getName(),
-                product.getPrice(),
-                client.getId(),
-                cantidadAComprar,
-                totalCompra);
+                        product.getName(),
+                        product.getPrice(),
+                        client.getId(),
+                        cantidadAComprar,
+                        totalCompra);
         return new SaleResponse("Finalizado", saleTicketResponse);
 
     }
 
+    public DevolutionResponse originalTicket(ReturnPurchaseRequest request) {
 
+        SaleTicket originalTicket = saleTicketService.getSaleTicketById(request.ticketId());
+
+        Product product = productService.getProductById(originalTicket.getProductId());
+        Client client = clientService.getClientById(originalTicket.getClientId());
+
+        if (request.quantity() > originalTicket.getClientQuantityRequired()) {
+            return new DevolutionResponse("Cantidad a devolver superior a la comprada, operacion imposible", null);
+        }
+
+        Integer totalToReturn = request.quantity() * product.getPrice();
+        Billing cashRegister = billingRepository.findFirstByOrderByIdDesc();
+        Integer currentMoney = cashRegister.getTotal();
+
+        boolean cashRegisterMoneyIsEnough = totalToReturn <=  currentMoney;
+        if (!cashRegisterMoneyIsEnough)
+            return new DevolutionResponse("No tenemos dinero suficiente para realizar su devolucion, vuelva mas tarde", null);
+
+        product.setQuantity(product.getQuantity() + request.quantity());
+        client.setMoney(client.getMoney() + totalToReturn);
+
+        Billing newCashRegister = new Billing();
+        newCashRegister.setTotal(currentMoney - totalToReturn);
+
+        productService.updateProductToInternalUse(product);
+        clientService.updateClientToInternalUse(client);
+        billingRepository.save(newCashRegister);
+
+        SaleTicket devolutionTicket = saleTicketService.createSaleTicket(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                client.getId(),
+                request.quantity(),
+                -totalToReturn
+                );
+
+        DevolutionTicketResponse devolutionTicketResponse = new DevolutionTicketResponse(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                client.getId(),
+                request.quantity(),
+                -totalToReturn
+        );
+        return new DevolutionResponse("Devolucion completada", devolutionTicketResponse);
+
+
+    }
 
 }
-
-
 
 
 

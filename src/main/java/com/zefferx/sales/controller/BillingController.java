@@ -22,7 +22,7 @@ public class BillingController {
 
     @PostMapping("/return")
     public DevolutionResponse processReturn(@RequestBody ReturnPurchaseRequest request){
-        return billingService.returnProcess(request);
+        return billingService.originalTicket(request);
 
     }
 
