@@ -72,54 +72,7 @@ public class BillingService {
 
     }
 
-    public DevolutionResponse returnProcess(ReturnPurchaseRequest request){
-        Product product = productService.getProductById(request.productId());
-        Client client = clientService.getClientById(request.clientId());
 
-        Integer quantityToReturn = request.quantity();
-        Integer totalToRefund = quantityToReturn * product.getPrice();
-
-        product.setQuantity(product.getQuantity() + quantityToReturn);
-        client.setMoney(client.getMoney() + totalToRefund);
-
-
-
-        Billing cashRegister = billingRepository.findFirstByOrderByIdDesc();
-        Integer currentMoney = cashRegister.getTotal();
-
-        boolean cashRegisterMoneyIsEnough = totalToRefund <=  currentMoney;
-        if (!cashRegisterMoneyIsEnough)
-            return new DevolutionResponse("No tenemos dinero suficiente para realizar su devolucion, vuelva mas tarde", null);
-
-        Billing newCashRegister = new Billing();
-
-        newCashRegister.setTotal(currentMoney - totalToRefund);
-
-        clientService.updateClientToInternalUse(client);
-        productService.updateProductToInternalUse(product);
-        billingRepository.save(newCashRegister);
-
-        SaleTicket newReturnTicket = SaleTicket.builder()
-                .productId(product.getId())
-                .productName(product.getName())
-                .productPrice(product.getPrice())
-                .clientId(client.getId())
-                .returnedQuantity(quantityToReturn)
-                .returnedMoney(totalToRefund)
-                .build();
-
-        DevolutionTicketResponse devolutionTicketResponse = new DevolutionTicketResponse(
-                product.getId(),
-                product.getName(),
-                product.getPrice(),
-                client.getId(),
-                quantityToReturn,
-                totalToRefund);
-        return new DevolutionResponse("Devolucion concretada", devolutionTicketResponse);
-
-
-
-    }
 
 }
 
