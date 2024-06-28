@@ -41,6 +41,7 @@ public class BillingService {
         if (!tieneSuficienteDinero)
             return new SaleResponse("Fondo insuficiente para continuar su compra", null) ;
 
+
         client.setMoney(client.getMoney() - totalCompra);
         Billing cashRegister = billingRepository.findFirstByOrderByIdDesc();
         Integer currentMoney = cashRegister.getTotal();
@@ -81,11 +82,18 @@ public class BillingService {
         product.setQuantity(product.getQuantity() + quantityToReturn);
         client.setMoney(client.getMoney() + totalToRefund);
 
+
+
         Billing cashRegister = billingRepository.findFirstByOrderByIdDesc();
-        Integer currentMoney = cashRegister.getTotal();;
+        Integer currentMoney = cashRegister.getTotal();
+
+        boolean cashRegisterMoneyIsEnough = totalToRefund <=  currentMoney;
+        if (!cashRegisterMoneyIsEnough)
+            return new DevolutionResponse("No tenemos dinero suficiente para realizar su devolucion, vuelva mas tarde", null);
+
         Billing newCashRegister = new Billing();
 
-        newCashRegister.setTotal(currentMoney -totalToRefund);
+        newCashRegister.setTotal(currentMoney - totalToRefund);
 
         clientService.updateClientToInternalUse(client);
         productService.updateProductToInternalUse(product);
